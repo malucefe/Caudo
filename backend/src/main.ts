@@ -14,9 +14,17 @@ async function bootstrap() {
   // Filtro global de excepciones
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  // CORS para el frontend Angular
+  // CORS para el frontend Angular (orígenes configurables vía CORS_ORIGINS)
+  const configService = app.get(ConfigService);
+  const corsOrigins = (
+    configService.get<string>('CORS_ORIGINS') || 'http://localhost:4200'
+  )
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+
   app.enableCors({
-    origin: ['http://localhost:4200'],
+    origin: corsOrigins,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
@@ -51,7 +59,6 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 3000);
   await app.listen(port);
   console.log(`🚀 Caudo API corriendo en http://localhost:${port}`);

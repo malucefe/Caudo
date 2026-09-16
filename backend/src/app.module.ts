@@ -28,7 +28,7 @@ import { Transaction } from './transactions/entities/transaction.entity';
     ThrottlerModule.forRoot([
       {
         ttl: 60000,
-        limit: 10,
+        limit: 100,
       },
     ]),
 

@@ -9,9 +9,13 @@ import * as path from 'path';
 export class FilesService {
   private readonly logger = new Logger(FilesService.name);
   private readonly uploadPath: string;
+  private readonly publicBaseUrl: string;
 
   constructor(private readonly configService: ConfigService) {
     this.uploadPath = this.configService.get<string>('UPLOAD_PATH', './uploads');
+    this.publicBaseUrl = (
+      this.configService.get<string>('APP_URL') || ''
+    ).replace(/\/+$/, '');
     this.ensureUploadDir();
   }
 
@@ -23,8 +27,12 @@ export class FilesService {
     await writeFile(filePath, file.buffer);
     this.logger.log(`Archivo guardado: ${filename}`);
 
+    const url = this.publicBaseUrl
+      ? `${this.publicBaseUrl}/uploads/${filename}`
+      : `/uploads/${filename}`;
+
     return {
-      url: `/uploads/${filename}`,
+      url,
       filename,
     };
   }
