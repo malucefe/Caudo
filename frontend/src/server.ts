@@ -4,6 +4,7 @@ import {
   isMainModule,
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 import express from 'express';
 import { join } from 'node:path';
 
@@ -11,6 +12,20 @@ const browserDistFolder = join(import.meta.dirname, '../browser');
 
 const app = express();
 const angularApp = new AngularNodeAppEngine();
+
+const backendUrl = process.env['BACKEND_URL'] || 'http://localhost:3000';
+if (process.env['NODE_ENV'] === 'production' && !process.env['BACKEND_URL']) {
+  console.warn(
+    'BACKEND_URL no definida: usando valor por defecto (localhost:3000)',
+  );
+}
+
+const proxyOptions = {
+  target: backendUrl,
+  changeOrigin: true,
+  pathFilter: ['/api', '/uploads'],
+};
+app.use(createProxyMiddleware(proxyOptions));
 
 /**
  * Example Express Rest API endpoints can be defined here.

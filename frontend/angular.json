@@ -31,7 +31,7 @@
             "server": "src/main.server.ts",
             "outputMode": "server",
             "security": {
-              "allowedHosts": []
+              "allowedHosts": ["*.up.railway.app", "localhost"]
             },
             "ssr": {
               "entry": "src/server.ts"
