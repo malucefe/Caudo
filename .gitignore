@@ -1,0 +1,24 @@
+# Dependencias
+node_modules/
+
+# Compilados
+dist/
+out-tsc/
+
+# Angular
+.angular/
+
+# Entorno (no versionar secretos)
+.env
+.env.local
+
+# Cargas de archivos
+uploads/
+
+# Cobertura y logs
+coverage/
+*.log
+
+# Sistema
+.DS_Store
+Thumbs.db
