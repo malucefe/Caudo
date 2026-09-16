@@ -2,9 +2,15 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
+import { CategoriesModule } from './categories/categories.module';
+import { TransactionsModule } from './transactions/transactions.module';
+import { FilesModule } from './files/files.module';
+import { SeedModule } from './seed/seed.module';
 
 import { User } from './users/entities/user.entity';
 import { Category } from './categories/entities/category.entity';
@@ -47,9 +53,19 @@ import { Transaction } from './transactions/entities/transaction.entity';
       inject: [ConfigService],
     }),
 
+    // Servir archivos estáticos (uploads)
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'uploads'),
+      serveRoot: '/uploads',
+    }),
+
     // Módulos de la aplicación
     AuthModule,
     UsersModule,
+    CategoriesModule,
+    TransactionsModule,
+    FilesModule,
+    SeedModule,
   ],
 })
 export class AppModule {}

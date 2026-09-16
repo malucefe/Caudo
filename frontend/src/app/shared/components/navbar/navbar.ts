@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive, Router } from '@angular/router';
-import { LucideAngularModule, User, LogOut, Wallet, Menu, X } from 'lucide-angular';
+import { LucideAngularModule, User, LogOut, Wallet, Menu, X, ArrowLeftRight } from 'lucide-angular';
 import { AuthService } from '../../../core/services/auth.service';
 import { ToastService } from '../../../shared/components/toast/toast.service';
 
@@ -19,6 +19,10 @@ import { ToastService } from '../../../shared/components/toast/toast.service';
       </div>
 
       <div class="navbar-links" [class.open]="mobileMenuOpen">
+        <a routerLink="/transactions" routerLinkActive="active" class="nav-link" (click)="mobileMenuOpen = false">
+          <lucide-angular [img]="ArrowLeftRight" size="18"></lucide-angular>
+          <span>Transacciones</span>
+        </a>
         <a routerLink="/profile" routerLinkActive="active" class="nav-link" (click)="mobileMenuOpen = false">
           <lucide-angular [img]="User" size="18"></lucide-angular>
           <span>Perfil</span>
@@ -233,6 +237,7 @@ export class NavbarComponent {
   Wallet = Wallet;
   Menu = Menu;
   X = X;
+  ArrowLeftRight = ArrowLeftRight;
 
   mobileMenuOpen = false;
 
