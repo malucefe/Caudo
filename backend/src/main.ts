@@ -54,6 +54,7 @@ async function bootstrap() {
     .addTag('categories', 'Categorías de transacciones')
     .addTag('transactions', 'Ingresos y egresos')
     .addTag('files', 'Carga de archivos')
+    .addTag('health', 'Healthcheck del servicio')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

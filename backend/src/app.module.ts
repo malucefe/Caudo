@@ -15,8 +15,10 @@ import { SeedModule } from './seed/seed.module';
 import { User } from './users/entities/user.entity';
 import { Category } from './categories/entities/category.entity';
 import { Transaction } from './transactions/entities/transaction.entity';
+import { HealthController } from './health/health.controller';
 
 @Module({
+  controllers: [HealthController],
   imports: [
     // Configuración global de variables de entorno
     ConfigModule.forRoot({
