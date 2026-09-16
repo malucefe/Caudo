@@ -1,2 +1,0 @@
-src/main.ts(6,37): error TS2307: Cannot find module './common/filters/http-exception.filter' or its corresponding type declarations.
-src/transactions/transactions.service.spec.ts(2,37): error TS2307: Cannot find module './transactions.service' or its corresponding type declarations.
