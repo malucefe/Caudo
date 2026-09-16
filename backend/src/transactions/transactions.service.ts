@@ -1,9 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Transaction, TransactionType } from './entities/transaction.entity';
+import { Transaction } from './entities/transaction.entity';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
+import { FilterTransactionsDto } from './dto/filter-transaction.dto';
 
 @Injectable()
 export class TransactionsService {
@@ -25,14 +26,10 @@ export class TransactionsService {
     return this.findOne(userId, saved.id);
   }
 
-  async findAll(
-    userId: string,
-    page = 1,
-    limit = 20,
-    tipo?: TransactionType,
-    mes?: number,
-    anio?: number,
-  ) {
+  async findAll(userId: string, filter: FilterTransactionsDto = {}) {
+    const page = filter.page || 1;
+    const limit = filter.limit || 20;
+
     const query = this.transactionsRepository
       .createQueryBuilder('t')
       .leftJoinAndSelect('t.category', 'category')
@@ -42,16 +39,32 @@ export class TransactionsService {
       .skip((page - 1) * limit)
       .take(limit);
 
-    if (tipo) {
-      query.andWhere('t.tipo = :tipo', { tipo });
+    if (filter.type) {
+      query.andWhere('t.tipo = :type', { type: filter.type });
     }
 
-    if (mes && anio) {
-      const startDate = new Date(anio, mes - 1, 1);
-      const endDate = new Date(anio, mes, 0);
-      query.andWhere('t.fecha BETWEEN :startDate AND :endDate', {
-        startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0],
+    if (filter.startDate) {
+      query.andWhere('t.fecha >= :startDate', {
+        startDate: filter.startDate,
+      });
+    }
+
+    if (filter.endDate) {
+      query.andWhere('t.fecha <= :endDate', { endDate: filter.endDate });
+    }
+
+    if (filter.categoryId) {
+      query.andWhere('t.categoriaId = :categoryId', {
+        categoryId: filter.categoryId,
+      });
+    }
+
+    if (filter.mes && filter.anio) {
+      const mesStart = new Date(filter.anio, filter.mes - 1, 1);
+      const mesEnd = new Date(filter.anio, filter.mes, 0);
+      query.andWhere('t.fecha BETWEEN :mesStart AND :mesEnd', {
+        mesStart: mesStart.toISOString().split('T')[0],
+        mesEnd: mesEnd.toISOString().split('T')[0],
       });
     }
 

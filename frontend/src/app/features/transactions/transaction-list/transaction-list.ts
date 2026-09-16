@@ -2,12 +2,14 @@ import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@ang
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { LucideAngularModule, Plus, Filter, Trash2, ArrowLeftRight, Calendar, Tag } from 'lucide-angular';
+import { LucideAngularModule, Plus, Filter, Trash2, ArrowLeftRight, Calendar, Tag, X } from 'lucide-angular';
 import { SkeletonCardComponent } from '../../../shared/components/skeleton/skeleton-card';
 import { CopCurrencyPipe } from '../../../shared/pipes/cop-currency.pipe';
 import { TransactionService } from '../../../core/services/transaction.service';
+import { CategoryService } from '../../../core/services/category.service';
 import { ToastService } from '../../../shared/components/toast/toast.service';
 import { Transaction, PaginatedResponse } from '../../../core/models/transaction.model';
+import { Category } from '../../../core/models/category.model';
 
 @Component({
   selector: 'app-transaction-list',
@@ -45,12 +47,33 @@ import { Transaction, PaginatedResponse } from '../../../core/models/transaction
         <div class="filters-bar">
           <div class="filter-group">
             <lucide-angular [img]="Filter" size="16"></lucide-angular>
-            <select [(ngModel)]="filterTipo" (change)="applyFilters()" class="filter-select">
+            <select [(ngModel)]="filterType" (change)="applyFilters()" class="filter-select">
               <option value="">Todos los tipos</option>
               <option value="ingreso">Ingresos</option>
               <option value="egreso">Egresos</option>
             </select>
           </div>
+          <div class="filter-group">
+            <lucide-angular [img]="Tag" size="16"></lucide-angular>
+            <select [(ngModel)]="filterCategoryId" (change)="applyFilters()" class="filter-select">
+              <option value="">Todas las categorías</option>
+              @for (c of categories(); track c.id) {
+                <option [value]="c.id">{{ c.nombre }}</option>
+              }
+            </select>
+          </div>
+          <div class="filter-group">
+            <lucide-angular [img]="Calendar" size="16"></lucide-angular>
+            <input type="date" [(ngModel)]="filterStartDate" (change)="applyFilters()" class="filter-date" title="Desde" aria-label="Fecha inicial" />
+            <span class="date-sep">→</span>
+            <input type="date" [(ngModel)]="filterEndDate" (change)="applyFilters()" class="filter-date" title="Hasta" aria-label="Fecha final" />
+          </div>
+          @if (hasActiveFilters()) {
+            <button type="button" class="btn-clear" (click)="clearFilters()">
+              <lucide-angular [img]="X" size="16"></lucide-angular>
+              Limpiar
+            </button>
+          }
         </div>
 
         <div class="transactions-list">
@@ -152,6 +175,10 @@ import { Transaction, PaginatedResponse } from '../../../core/models/transaction
       box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35);
     }
     .filters-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
       margin-bottom: 1rem;
       animation: fadeInUp 0.4s ease-out 0.1s both;
     }
@@ -174,6 +201,33 @@ import { Transaction, PaginatedResponse } from '../../../core/models/transaction
       cursor: pointer;
     }
     .filter-select option { background: #0a0e1a; }
+    .filter-date {
+      background: transparent;
+      border: none;
+      color: white;
+      font-size: 0.9rem;
+      cursor: pointer;
+      color-scheme: dark;
+    }
+    .date-sep { color: rgba(255,255,255,0.3); font-size: 0.85rem; }
+    .btn-clear {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.2);
+      color: rgba(239,68,68,0.8);
+      padding: 0.5rem 1rem;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-clear:hover {
+      background: rgba(239,68,68,0.15);
+      color: #ef4444;
+    }
     .transactions-list {
       display: flex;
       flex-direction: column;
@@ -316,6 +370,7 @@ import { Transaction, PaginatedResponse } from '../../../core/models/transaction
 })
 export class TransactionListComponent implements OnInit {
   private transactionService = inject(TransactionService);
+  private categoryService = inject(CategoryService);
   private toast = inject(ToastService);
 
   Plus = Plus;
@@ -324,16 +379,29 @@ export class TransactionListComponent implements OnInit {
   ArrowLeftRight = ArrowLeftRight;
   Calendar = Calendar;
   Tag = Tag;
+  X = X;
 
   loading = signal(true);
   error = signal<string | null>(null);
   transactions = signal<Transaction[]>([]);
+  categories = signal<Category[]>([]);
   page = signal(1);
   totalPages = signal(1);
-  filterTipo = '';
+  filterType = '';
+  filterStartDate = '';
+  filterEndDate = '';
+  filterCategoryId = '';
 
   ngOnInit(): void {
+    this.loadCategories();
     this.loadTransactions();
+  }
+
+  loadCategories(): void {
+    this.categoryService.getAll().subscribe({
+      next: (cats) => this.categories.set(cats),
+      error: () => this.categories.set([]),
+    });
   }
 
   loadTransactions(): void {
@@ -341,7 +409,10 @@ export class TransactionListComponent implements OnInit {
       page: String(this.page()),
       limit: '20'
     };
-    if (this.filterTipo) params['tipo'] = this.filterTipo;
+    if (this.filterType) params['type'] = this.filterType;
+    if (this.filterStartDate) params['startDate'] = this.filterStartDate;
+    if (this.filterEndDate) params['endDate'] = this.filterEndDate;
+    if (this.filterCategoryId) params['categoryId'] = this.filterCategoryId;
 
     this.error.set(null);
     this.loading.set(true);
@@ -362,6 +433,18 @@ export class TransactionListComponent implements OnInit {
   applyFilters(): void {
     this.page.set(1);
     this.loadTransactions();
+  }
+
+  hasActiveFilters(): boolean {
+    return !!(this.filterType || this.filterStartDate || this.filterEndDate || this.filterCategoryId);
+  }
+
+  clearFilters(): void {
+    this.filterType = '';
+    this.filterStartDate = '';
+    this.filterEndDate = '';
+    this.filterCategoryId = '';
+    this.applyFilters();
   }
 
   changePage(newPage: number): void {

@@ -78,29 +78,28 @@ describe('TransactionsService', () => {
   });
 
   describe('findAll', () => {
-    it('should return paginated results filtered by userId', async () => {
-      const mockQueryBuilder: Record<string, jest.Mock> = {
-        leftJoinAndSelect: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        orderBy: jest.fn().mockReturnThis(),
-        addOrderBy: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        take: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        getManyAndCount: jest.fn().mockResolvedValue([
-          [mockTransaction],
-          1,
-        ]),
-      };
+    const createMockQueryBuilder = (): Record<string, jest.Mock> => ({
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[mockTransaction], 1]),
+    });
 
+    it('should return paginated results filtered by userId', async () => {
+      const mockQueryBuilder = createMockQueryBuilder();
       (repo.createQueryBuilder as jest.Mock).mockReturnValue(mockQueryBuilder);
 
-      const result = await service.findAll(mockUserId, 1, 20);
+      const result = await service.findAll(mockUserId);
 
       expect(mockQueryBuilder.where).toHaveBeenCalledWith(
         't.userId = :userId',
         { userId: mockUserId },
       );
+      expect(mockQueryBuilder.andWhere).not.toHaveBeenCalled();
       expect(result).toEqual({
         data: [mockTransaction],
         total: 1,
@@ -111,50 +110,75 @@ describe('TransactionsService', () => {
     });
 
     it('should filter by type (ingreso/egreso)', async () => {
-      const mockQueryBuilder: Record<string, jest.Mock> = {
-        leftJoinAndSelect: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        orderBy: jest.fn().mockReturnThis(),
-        addOrderBy: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        take: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
-      };
-
+      const mockQueryBuilder = createMockQueryBuilder();
       (repo.createQueryBuilder as jest.Mock).mockReturnValue(mockQueryBuilder);
 
-      await service.findAll(mockUserId, 1, 20, TransactionType.INGRESO);
+      await service.findAll(mockUserId, { type: TransactionType.INGRESO });
 
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        't.tipo = :tipo',
-        { tipo: TransactionType.INGRESO },
+        't.tipo = :type',
+        { type: TransactionType.INGRESO },
+      );
+    });
+
+    it('should filter by date range (startDate and endDate)', async () => {
+      const mockQueryBuilder = createMockQueryBuilder();
+      (repo.createQueryBuilder as jest.Mock).mockReturnValue(mockQueryBuilder);
+
+      await service.findAll(mockUserId, {
+        startDate: '2026-06-01',
+        endDate: '2026-06-30',
+      });
+
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        't.fecha >= :startDate',
+        { startDate: '2026-06-01' },
+      );
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        't.fecha <= :endDate',
+        { endDate: '2026-06-30' },
+      );
+    });
+
+    it('should filter by categoryId', async () => {
+      const mockQueryBuilder = createMockQueryBuilder();
+      (repo.createQueryBuilder as jest.Mock).mockReturnValue(mockQueryBuilder);
+
+      await service.findAll(mockUserId, { categoryId: 'cat-uuid-001' });
+
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        't.categoriaId = :categoryId',
+        { categoryId: 'cat-uuid-001' },
       );
     });
 
     it('should filter by month/year', async () => {
-      const mockQueryBuilder: Record<string, jest.Mock> = {
-        leftJoinAndSelect: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        orderBy: jest.fn().mockReturnThis(),
-        addOrderBy: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        take: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
-      };
-
+      const mockQueryBuilder = createMockQueryBuilder();
       (repo.createQueryBuilder as jest.Mock).mockReturnValue(mockQueryBuilder);
 
-      await service.findAll(mockUserId, 1, 20, undefined, 6, 2026);
+      await service.findAll(mockUserId, { mes: 6, anio: 2026 });
 
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        't.fecha BETWEEN :startDate AND :endDate',
+        't.fecha BETWEEN :mesStart AND :mesEnd',
         {
-          startDate: '2026-06-01',
-          endDate: '2026-06-30',
+          mesStart: '2026-06-01',
+          mesEnd: '2026-06-30',
         },
       );
+    });
+
+    it('should combine multiple filters', async () => {
+      const mockQueryBuilder = createMockQueryBuilder();
+      (repo.createQueryBuilder as jest.Mock).mockReturnValue(mockQueryBuilder);
+
+      await service.findAll(mockUserId, {
+        type: TransactionType.EGRESO,
+        categoryId: 'cat-uuid-001',
+        startDate: '2026-06-01',
+        endDate: '2026-06-30',
+      });
+
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledTimes(4);
     });
   });
 

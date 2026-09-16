@@ -21,6 +21,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TransactionsService } from './transactions.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
+import { FilterTransactionsDto } from './dto/filter-transaction.dto';
 import { TransactionType } from './entities/transaction.entity';
 
 @ApiTags('transactions')
@@ -40,25 +41,14 @@ export class TransactionsController {
   @ApiOperation({ summary: 'Listar transacciones del usuario' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'tipo', required: false, enum: TransactionType })
+  @ApiQuery({ name: 'type', required: false, enum: TransactionType })
+  @ApiQuery({ name: 'startDate', required: false, type: String, example: '2026-06-01' })
+  @ApiQuery({ name: 'endDate', required: false, type: String, example: '2026-06-30' })
+  @ApiQuery({ name: 'categoryId', required: false, type: String })
   @ApiQuery({ name: 'mes', required: false, type: Number })
   @ApiQuery({ name: 'anio', required: false, type: Number })
-  findAll(
-    @Request() req,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-    @Query('tipo') tipo?: TransactionType,
-    @Query('mes') mes?: number,
-    @Query('anio') anio?: number,
-  ) {
-    return this.transactionsService.findAll(
-      req.user.userId,
-      page || 1,
-      limit || 20,
-      tipo,
-      mes,
-      anio,
-    );
+  findAll(@Request() req, @Query() filter: FilterTransactionsDto) {
+    return this.transactionsService.findAll(req.user.userId, filter);
   }
 
   @Get('summary')
