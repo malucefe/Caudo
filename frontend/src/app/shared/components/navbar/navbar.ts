@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive, Router } from '@angular/router';
-import { LucideAngularModule, User, LogOut, Wallet, Menu, X, ArrowLeftRight } from 'lucide-angular';
+import { LucideAngularModule, User, LogOut, Wallet, Menu, X, ArrowLeftRight, LayoutDashboard, PiggyBank, Target, Landmark, Lightbulb, ShieldCheck } from 'lucide-angular';
 import { AuthService } from '../../../core/services/auth.service';
 import { ToastService } from '../../../shared/components/toast/toast.service';
 
@@ -15,14 +15,41 @@ import { ToastService } from '../../../shared/components/toast/toast.service';
         <div class="brand-icon">
           <lucide-angular [img]="Wallet" size="20"></lucide-angular>
         </div>
-        <a routerLink="/dashboard" (click)="mobileMenuOpen = false">Caudo</a>
+        <a [routerLink]="authService.isAdmin() ? '/admin' : '/dashboard'" (click)="mobileMenuOpen = false">Caudo</a>
       </div>
 
       <div class="navbar-links" [class.open]="mobileMenuOpen">
+        @if (authService.isAdmin()) {
+          <a routerLink="/admin" routerLinkActive="active" class="nav-link" (click)="mobileMenuOpen = false">
+            <lucide-angular [img]="ShieldCheck" size="18"></lucide-angular>
+            <span>Administración</span>
+          </a>
+        } @else {
+        <a routerLink="/dashboard" routerLinkActive="active" class="nav-link" (click)="mobileMenuOpen = false">
+          <lucide-angular [img]="LayoutDashboard" size="18"></lucide-angular>
+          <span>Resumen</span>
+        </a>
         <a routerLink="/transactions" routerLinkActive="active" class="nav-link" (click)="mobileMenuOpen = false">
           <lucide-angular [img]="ArrowLeftRight" size="18"></lucide-angular>
           <span>Transacciones</span>
         </a>
+        <a routerLink="/budgets" routerLinkActive="active" class="nav-link" (click)="mobileMenuOpen = false">
+          <lucide-angular [img]="PiggyBank" size="18"></lucide-angular>
+          <span>Presupuestos</span>
+        </a>
+        <a routerLink="/goals" routerLinkActive="active" class="nav-link" (click)="mobileMenuOpen = false">
+          <lucide-angular [img]="Target" size="18"></lucide-angular>
+          <span>Metas</span>
+        </a>
+        <a routerLink="/credits" routerLinkActive="active" class="nav-link" (click)="mobileMenuOpen = false">
+          <lucide-angular [img]="Landmark" size="18"></lucide-angular>
+          <span>Créditos</span>
+        </a>
+        <a routerLink="/insights" routerLinkActive="active" class="nav-link" (click)="mobileMenuOpen = false">
+          <lucide-angular [img]="Lightbulb" size="18"></lucide-angular>
+          <span>Análisis</span>
+        </a>
+        }
         <a routerLink="/profile" routerLinkActive="active" class="nav-link" (click)="mobileMenuOpen = false">
           <lucide-angular [img]="User" size="18"></lucide-angular>
           <span>Perfil</span>
@@ -238,6 +265,12 @@ export class NavbarComponent {
   Menu = Menu;
   X = X;
   ArrowLeftRight = ArrowLeftRight;
+  LayoutDashboard = LayoutDashboard;
+  PiggyBank = PiggyBank;
+  Target = Target;
+  Landmark = Landmark;
+  Lightbulb = Lightbulb;
+  ShieldCheck = ShieldCheck;
 
   mobileMenuOpen = false;
 

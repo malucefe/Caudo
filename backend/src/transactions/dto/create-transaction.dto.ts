@@ -8,7 +8,7 @@ import {
   Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { TransactionType } from '../entities/transaction.entity';
+import { CategoryOrigin, TransactionType } from '../entities/transaction.entity';
 
 export class CreateTransactionDto {
   @ApiProperty({ enum: TransactionType, example: 'egreso' })
@@ -20,10 +20,23 @@ export class CreateTransactionDto {
   @Min(1, { message: 'El monto debe ser mayor a 0' })
   monto: number;
 
-  @ApiProperty({ example: 'uuid-de-categoria' })
+  @ApiPropertyOptional({
+    example: 'uuid-de-categoria',
+    description:
+      'Categoría de la transacción. Si se omite, el sistema la asigna automáticamente a partir de la descripción.',
+  })
   @IsString()
-  @IsNotEmpty({ message: 'La categoría es requerida' })
-  categoriaId: string;
+  @IsNotEmpty({ message: 'La categoría no puede estar vacía' })
+  @IsOptional()
+  categoriaId?: string;
+
+  @ApiPropertyOptional({
+    enum: CategoryOrigin,
+    description: 'automatica cuando el usuario aceptó la sugerencia del sistema',
+  })
+  @IsEnum(CategoryOrigin)
+  @IsOptional()
+  origenCategoria?: CategoryOrigin;
 
   @ApiPropertyOptional({ example: 'Almuerzo en restaurante' })
   @IsString()

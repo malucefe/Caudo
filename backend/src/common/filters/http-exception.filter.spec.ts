@@ -10,9 +10,11 @@ describe('AllExceptionsFilter', () => {
   let filter: AllExceptionsFilter;
   let mockResponse: jest.Mocked<Partial<Response>>;
   let mockArgumentsHost: jest.Mocked<ArgumentsHost>;
+  let monitoring: { recordError: jest.Mock };
 
   beforeEach(() => {
-    filter = new AllExceptionsFilter();
+    monitoring = { recordError: jest.fn().mockResolvedValue(undefined) };
+    filter = new AllExceptionsFilter(monitoring as any);
 
     mockResponse = {
       status: jest.fn().mockReturnThis(),
@@ -22,7 +24,7 @@ describe('AllExceptionsFilter', () => {
     mockArgumentsHost = {
       switchToHttp: jest.fn().mockReturnValue({
         getResponse: () => mockResponse,
-        getRequest: () => ({}),
+        getRequest: () => ({ method: 'GET', originalUrl: '/api/dashboard?x=1', user: { userId: 'u1' } }),
         getNext: () => ({}),
       }),
       getArgByIndex: jest.fn(),
@@ -92,5 +94,17 @@ describe('AllExceptionsFilter', () => {
         timestamp: expect.any(String),
       }),
     );
+  });
+
+  it('registra los errores 5xx para el monitoreo del administrador', () => {
+    filter.catch(new Error('boom'), mockArgumentsHost);
+    expect(monitoring.recordError).toHaveBeenCalledWith(
+      expect.objectContaining({ statusCode: 500, metodo: 'GET', ruta: '/api/dashboard', mensaje: 'boom', userId: 'u1' }),
+    );
+  });
+
+  it('no registra errores 4xx', () => {
+    filter.catch(new HttpException('Not Found', HttpStatus.NOT_FOUND), mockArgumentsHost);
+    expect(monitoring.recordError).not.toHaveBeenCalled();
   });
 });

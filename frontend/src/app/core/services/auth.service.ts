@@ -3,7 +3,14 @@ import { HttpClient } from '@angular/common/http';
 import { isPlatformBrowser } from '@angular/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { User, AuthResponse, LoginRequest, RegisterRequest } from '../models/user.model';
+import {
+  User,
+  AuthResponse,
+  LoginRequest,
+  RegisterRequest,
+  UpdateProfileRequest,
+  ChangePasswordRequest,
+} from '../models/user.model';
 import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
@@ -52,8 +59,12 @@ export class AuthService {
     return this.http.get<User>(`${this.API_URL}/users/profile`);
   }
 
-  updateProfile(data: Partial<User>): Observable<User> {
+  updateProfile(data: UpdateProfileRequest): Observable<User> {
     return this.http.put<User>(`${this.API_URL}/users/profile`, data);
+  }
+
+  changePassword(data: ChangePasswordRequest): Observable<{ message: string }> {
+    return this.http.put<{ message: string }>(`${this.API_URL}/users/password`, data);
   }
 
   logout(): void {
@@ -74,6 +85,10 @@ export class AuthService {
     if (!storage) return null;
     const user = storage.getItem(this.USER_KEY);
     return user ? JSON.parse(user) : null;
+  }
+
+  isAdmin(): boolean {
+    return this.getCurrentUser()?.rol === 'admin';
   }
 
   isLoggedIn(): boolean {

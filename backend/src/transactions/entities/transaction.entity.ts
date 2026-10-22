@@ -16,6 +16,11 @@ export enum TransactionType {
   EGRESO = 'egreso',
 }
 
+export enum CategoryOrigin {
+  MANUAL = 'manual',
+  AUTOMATICA = 'automatica',
+}
+
 @Entity('transactions')
 @Index(['userId', 'fecha'])
 export class Transaction {
@@ -36,6 +41,15 @@ export class Transaction {
 
   @Column({ name: 'categoria_id' })
   categoriaId: string;
+
+  /** Indica si la categoría fue elegida por el usuario o sugerida por el sistema. */
+  @Column({
+    name: 'origen_categoria',
+    type: 'enum',
+    enum: CategoryOrigin,
+    default: CategoryOrigin.MANUAL,
+  })
+  origenCategoria: CategoryOrigin;
 
   @Column({ length: 500, nullable: true })
   descripcion: string;

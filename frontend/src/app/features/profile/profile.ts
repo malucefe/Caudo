@@ -1,11 +1,11 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { LucideAngularModule, User, Mail, Calendar, Check, Edit2 } from 'lucide-angular';
+import { LucideAngularModule, User, Mail, Calendar, Check, Edit2, Wallet, Lock } from 'lucide-angular';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../shared/components/toast/toast.service';
-import { User as UserModel } from '../../core/models/user.model';
+import { User as UserModel, ChangePasswordRequest } from '../../core/models/user.model';
 
 @Component({
   selector: 'app-profile',
@@ -47,6 +47,14 @@ import { User as UserModel } from '../../core/models/user.model';
               <input type="email" [(ngModel)]="user.email" name="email" disabled class="input-disabled" />
               <span class="hint">El email no se puede cambiar</span>
             </div>
+            <div class="form-group">
+              <label>
+                <lucide-angular [img]="WalletIcon" size="14"></lucide-angular>
+                Ingreso mensual (COP)
+              </label>
+              <input type="number" [(ngModel)]="user.ingresoMensual" name="ingresoMensual" min="0" step="1000" [disabled]="!editing" placeholder="Ej. 3500000" />
+              <span class="hint">Se usa para calcular tu nivel de endeudamiento y tus presupuestos</span>
+            </div>
 
             @if (editing) {
               <button type="submit" class="btn-submit" [disabled]="!form.form.valid || loadingSubmit">
@@ -59,6 +67,32 @@ import { User as UserModel } from '../../core/models/user.model';
               </button>
             }
           </form>
+
+          <div class="password-section">
+            <h3>
+              <lucide-angular [img]="LockIcon" size="16"></lucide-angular>
+              Cambiar contraseña
+            </h3>
+            <form (ngSubmit)="onChangePassword()" #pwdForm="ngForm">
+              <div class="form-group">
+                <label>Contraseña actual</label>
+                <input type="password" [(ngModel)]="passwords.passwordActual" name="passwordActual" required autocomplete="current-password" />
+              </div>
+              <div class="form-group">
+                <label>Nueva contraseña</label>
+                <input type="password" [(ngModel)]="passwords.passwordNueva" name="passwordNueva" required autocomplete="new-password"
+                  pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$" />
+                <span class="hint">Mínimo 8 caracteres, con mayúscula, minúscula, número y un carácter especial</span>
+              </div>
+              <button type="submit" class="btn-submit" [disabled]="!pwdForm.form.valid || loadingPassword">
+                @if (loadingPassword) {
+                  <span class="loading-spinner"></span>
+                } @else {
+                  Actualizar contraseña
+                }
+              </button>
+            </form>
+          </div>
 
           <div class="account-info">
             <h3>Información de cuenta</h3>
@@ -146,6 +180,8 @@ import { User as UserModel } from '../../core/models/user.model';
     .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
     .loading-spinner { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    .password-section { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.06); }
+    .password-section h3 { display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; margin: 0 0 1rem; color: rgba(255,255,255,0.6); font-weight: 600; }
     .account-info { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.06); }
     .account-info h3 { font-size: 0.95rem; margin: 0 0 0.75rem; color: rgba(255,255,255,0.6); font-weight: 600; }
     .info-item { display: flex; align-items: center; gap: 0.5rem; color: rgba(255,255,255,0.4); font-size: 0.9rem; }
@@ -170,11 +206,15 @@ export class ProfileComponent implements OnInit {
   Calendar = Calendar;
   Check = Check;
   Edit2 = Edit2;
+  WalletIcon = Wallet;
+  LockIcon = Lock;
 
   loading = signal(true);
   user: UserModel = { id: '', nombre: '', email: '', createdAt: '' };
   editing = false;
   loadingSubmit = false;
+  loadingPassword = false;
+  passwords: ChangePasswordRequest = { passwordActual: '', passwordNueva: '' };
 
   ngOnInit(): void {
     this.authService.getProfile().subscribe({
@@ -190,7 +230,11 @@ export class ProfileComponent implements OnInit {
 
   onSubmit(): void {
     this.loadingSubmit = true;
-    this.authService.updateProfile({ nombre: this.user.nombre }).subscribe({
+    const ingreso = this.user.ingresoMensual;
+    this.authService.updateProfile({
+      nombre: this.user.nombre,
+      ingresoMensual: ingreso === null || ingreso === undefined || (ingreso as unknown) === '' ? undefined : Number(ingreso),
+    }).subscribe({
       next: (data) => {
         this.user = data;
         this.editing = false;
@@ -198,9 +242,26 @@ export class ProfileComponent implements OnInit {
         this.toast.success('Perfil actualizado correctamente');
         localStorage.setItem('caudo_user', JSON.stringify(data));
       },
-      error: () => {
+      error: (err) => {
         this.loadingSubmit = false;
-        this.toast.error('Error al actualizar el perfil');
+        const msg = err.error?.message;
+        this.toast.error(Array.isArray(msg) ? msg.join('. ') : msg || 'Error al actualizar el perfil');
+      }
+    });
+  }
+
+  onChangePassword(): void {
+    this.loadingPassword = true;
+    this.authService.changePassword(this.passwords).subscribe({
+      next: () => {
+        this.loadingPassword = false;
+        this.passwords = { passwordActual: '', passwordNueva: '' };
+        this.toast.success('Contraseña actualizada correctamente');
+      },
+      error: (err) => {
+        this.loadingPassword = false;
+        const msg = err.error?.message;
+        this.toast.error(Array.isArray(msg) ? msg.join('. ') : msg || 'No se pudo cambiar la contraseña');
       }
     });
   }

@@ -1,0 +1,47 @@
+{
+  "name": "Caudo - Redacción de recomendaciones",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "caudo-recomendaciones",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1f0c1c2-0001-4a00-9000-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "caudo-recomendaciones"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Sustituye este nodo por un nodo de IA (OpenAI, Anthropic, etc.) si quieres que un LLM reescriba el texto.\n// Recibe solo textos ya calculados por el backend: no hay datos personales ni transacciones.\nconst recos = $input.first().json.body?.recomendaciones ?? [];\nconst intro = { alta: 'Atención: ', media: 'Ojo: ', baja: 'Dato útil: ' };\nreturn [{ json: { recomendaciones: recos.map(r => ({ id: r.id, mensaje: `${intro[r.prioridad] ?? ''}${r.mensaje}` })) } }];"
+      },
+      "id": "a1f0c1c2-0002-4a00-9000-000000000002",
+      "name": "Redactar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "a1f0c1c2-0003-4a00-9000-000000000003",
+      "name": "Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [480, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Redactar", "type": "main", "index": 0 }]] },
+    "Redactar": { "main": [[{ "node": "Responder", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

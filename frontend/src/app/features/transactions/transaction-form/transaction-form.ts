@@ -40,12 +40,15 @@ const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.pdf'];
               <lucide-angular [img]="Tag" size="14"></lucide-angular>
               Categoría
             </label>
-            <select formControlName="categoriaId" required>
-              <option value="">Seleccionar categoría...</option>
+            <select formControlName="categoriaId" (change)="onCategoryChange()">
+              <option value="">Automática (según la descripción)</option>
               @for (cat of categories(); track cat.id) {
                 <option [value]="cat.id">{{ cat.nombre }}</option>
               }
             </select>
+            @if (suggestionHint()) {
+              <small class="hint">{{ suggestionHint() }}</small>
+            }
           </div>
           <div class="form-group">
             <label>
@@ -66,7 +69,7 @@ const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.pdf'];
               <lucide-angular [img]="FileText" size="14"></lucide-angular>
               Descripción <span class="optional">(opcional)</span>
             </label>
-            <input type="text" formControlName="descripcion" placeholder="Ej: Almuerzo en restaurante" />
+            <input type="text" formControlName="descripcion" (blur)="suggestCategory()" placeholder="Ej: Almuerzo en restaurante" />
           </div>
           <div class="form-group">
             <label>
@@ -327,12 +330,14 @@ export class TransactionFormComponent implements OnInit {
   X = X;
 
   categories = signal<Category[]>([]);
+  suggestionHint = signal('');
+  private autoAssigned = false;
   loading = false;
   selectedFile: File | null = null;
 
   form = this.fb.nonNullable.group({
     tipo: ['egreso' as 'ingreso' | 'egreso', Validators.required],
-    categoriaId: ['', Validators.required],
+    categoriaId: [''],
     monto: [null as number | null, [Validators.required, Validators.min(1)]],
     fecha: [new Date().toISOString().split('T')[0], Validators.required],
     descripcion: [''],
@@ -351,7 +356,35 @@ export class TransactionFormComponent implements OnInit {
   onTipoChange(tipo: 'ingreso' | 'egreso'): void {
     this.form.controls.tipo.setValue(tipo);
     this.form.controls.categoriaId.setValue('');
+    this.autoAssigned = false;
+    this.suggestionHint.set('');
     this.loadCategories(tipo);
+  }
+
+  /** HU-05: propone una categoría a partir de la descripción, sin pisar una elección manual. */
+  suggestCategory(): void {
+    const { tipo, descripcion, categoriaId } = this.form.getRawValue();
+    if (!descripcion.trim() || (categoriaId && !this.autoAssigned)) return;
+
+    this.categoryService.suggest(descripcion, tipo).subscribe({
+      next: (s) => {
+        if (s.category) {
+          this.form.controls.categoriaId.setValue(s.category.id);
+          this.autoAssigned = true;
+          this.suggestionHint.set(`Sugerida: ${s.category.nombre} (puedes cambiarla)`);
+        } else if (this.autoAssigned) {
+          this.form.controls.categoriaId.setValue('');
+          this.autoAssigned = false;
+          this.suggestionHint.set('');
+        }
+      },
+      error: () => {},
+    });
+  }
+
+  onCategoryChange(): void {
+    this.autoAssigned = false;
+    this.suggestionHint.set('');
   }
 
   onFileSelected(event: Event): void {
@@ -396,7 +429,12 @@ export class TransactionFormComponent implements OnInit {
     const { tipo, categoriaId, monto, fecha, descripcion } = this.form.getRawValue();
     const payload = {
       tipo,
-      categoriaId,
+      ...(categoriaId
+        ? {
+            categoriaId,
+            origenCategoria: (this.autoAssigned ? 'automatica' : 'manual') as 'automatica' | 'manual',
+          }
+        : {}),
       monto: Number(monto),
       fecha,
       descripcion,

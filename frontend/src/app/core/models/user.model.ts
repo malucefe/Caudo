@@ -1,8 +1,13 @@
+export type UserRole = 'usuario' | 'admin';
+
 export interface User {
   id: string;
   nombre: string;
   email: string;
-  createdAt: string;
+  ingresoMensual?: number | null;
+  aceptaPolitica?: boolean;
+  rol?: UserRole;
+  createdAt?: string;
 }
 
 export interface AuthResponse {
@@ -19,4 +24,15 @@ export interface RegisterRequest {
   nombre: string;
   email: string;
   password: string;
+  aceptaPolitica: boolean;
+}
+
+export interface UpdateProfileRequest {
+  nombre?: string;
+  ingresoMensual?: number | null;
+}
+
+export interface ChangePasswordRequest {
+  passwordActual: string;
+  passwordNueva: string;
 }

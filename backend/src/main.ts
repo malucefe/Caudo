@@ -3,7 +3,6 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -11,8 +10,7 @@ async function bootstrap() {
   // Prefijo global para la API
   app.setGlobalPrefix('api');
 
-  // Filtro global de excepciones
-  app.useGlobalFilters(new AllExceptionsFilter());
+  // El filtro global de excepciones se registra en AppModule (APP_FILTER).
 
   // CORS para el frontend Angular (orígenes configurables vía CORS_ORIGINS)
   const configService = app.get(ConfigService);
@@ -54,6 +52,7 @@ async function bootstrap() {
     .addTag('categories', 'Categorías de transacciones')
     .addTag('transactions', 'Ingresos y egresos')
     .addTag('files', 'Carga de archivos')
+    .addTag('admin', 'Panel de administración (solo rol admin)')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

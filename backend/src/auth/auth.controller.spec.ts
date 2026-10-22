@@ -42,6 +42,7 @@ describe('AuthController', () => {
       nombre: 'Juan Pérez',
       email: 'juan@email.com',
       password: 'Password1!',
+      aceptaPolitica: true,
     };
 
     it('should call authService.register with DTO and return result', async () => {
