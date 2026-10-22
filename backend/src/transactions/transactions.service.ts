@@ -1,7 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Transaction } from './entities/transaction.entity';
+import { CategoryOrigin, Transaction } from './entities/transaction.entity';
+import { CategorizationService } from '../categories/categorization.service';
+import { CategoryType } from '../categories/entities/category.entity';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { FilterTransactionsDto } from './dto/filter-transaction.dto';
@@ -11,14 +13,35 @@ export class TransactionsService {
   constructor(
     @InjectRepository(Transaction)
     private readonly transactionsRepository: Repository<Transaction>,
+    private readonly categorizationService: CategorizationService,
   ) {}
 
   async create(
     userId: string,
     dto: CreateTransactionDto,
   ): Promise<Transaction> {
+    let categoriaId = dto.categoriaId;
+    let origenCategoria = dto.origenCategoria ?? CategoryOrigin.MANUAL;
+
+    if (!categoriaId) {
+      // HU-05: sin categoría explícita, se asigna automáticamente.
+      const category = await this.categorizationService.resolve(
+        dto.descripcion ?? '',
+        dto.tipo as unknown as CategoryType,
+      );
+      if (!category) {
+        throw new BadRequestException(
+          'No se pudo asignar una categoría automáticamente; selecciónala manualmente',
+        );
+      }
+      categoriaId = category.id;
+      origenCategoria = CategoryOrigin.AUTOMATICA;
+    }
+
     const transaction = this.transactionsRepository.create({
       ...dto,
+      categoriaId,
+      origenCategoria,
       userId,
     });
     const saved = await this.transactionsRepository.save(transaction);
@@ -96,7 +119,14 @@ export class TransactionsService {
     dto: UpdateTransactionDto,
   ): Promise<Transaction> {
     const transaction = await this.findOne(userId, id);
+    const changesCategory =
+      dto.categoriaId !== undefined && dto.categoriaId !== transaction.categoriaId;
     Object.assign(transaction, dto);
+    if (changesCategory) {
+      // Si el usuario corrige la categoría, deja de ser automática (HU-05).
+      transaction.origenCategoria = dto.origenCategoria ?? CategoryOrigin.MANUAL;
+      transaction.category = undefined as any; // fuerza a TypeORM a usar categoriaId
+    }
     await this.transactionsRepository.save(transaction);
     return this.findOne(userId, id);
   }

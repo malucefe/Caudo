@@ -251,9 +251,9 @@ export class LoginComponent {
   onSubmit(): void {
     this.loading = true;
     this.authService.login(this.credentials).subscribe({
-      next: () => {
+      next: (res) => {
         this.toast.success('¡Bienvenido de vuelta!');
-        this.router.navigate(['/dashboard']);
+        this.router.navigate([res.user.rol === 'admin' ? '/admin' : '/dashboard']);
       },
       error: (err) => {
         this.loading = false;

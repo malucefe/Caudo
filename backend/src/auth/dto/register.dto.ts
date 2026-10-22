@@ -1,4 +1,11 @@
-import { IsEmail, IsNotEmpty, IsString, Matches } from 'class-validator';
+import {
+  Equals,
+  IsBoolean,
+  IsEmail,
+  IsNotEmpty,
+  IsString,
+  Matches,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RegisterDto {
@@ -18,4 +25,15 @@ export class RegisterDto {
     message: 'La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial',
   })
   password: string;
+
+  @ApiProperty({
+    example: true,
+    description:
+      'Aceptación de la política de tratamiento de datos personales (debe ser true)',
+  })
+  @IsBoolean({ message: 'La aceptación de la política debe ser verdadero o falso' })
+  @Equals(true, {
+    message: 'Debe aceptar la política de tratamiento de datos personales',
+  })
+  aceptaPolitica: boolean;
 }

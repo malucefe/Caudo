@@ -42,7 +42,27 @@ import { RegisterRequest } from '../../../core/models/user.model';
               <lucide-angular [img]="Lock" size="14"></lucide-angular>
               Contraseña
             </label>
-            <input type="password" id="password" [(ngModel)]="data.password" name="password" required minlength="6" placeholder="Mínimo 6 caracteres" />
+            <input type="password" id="password" [(ngModel)]="data.password" name="password" required pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$" placeholder="Mínimo 8 caracteres" />
+            <span class="hint">Mínimo 8 caracteres, con mayúscula, minúscula, número y un carácter especial (&#64;$!%*?&amp;)</span>
+          </div>
+          <div class="consent">
+            <label class="consent-label">
+              <input type="checkbox" id="aceptaPolitica" [(ngModel)]="data.aceptaPolitica" name="aceptaPolitica" required />
+              <span>
+                Acepto la
+                <a href="#" (click)="togglePolicy($event)">política de tratamiento de datos personales</a>
+                (Ley 1581 de 2012).
+              </span>
+            </label>
+            @if (showPolicy) {
+              <div class="policy-text" role="note">
+                Caudo trata tus datos personales (nombre, correo y la información financiera que registres)
+                únicamente para ofrecerte las funcionalidades de la plataforma: registro de movimientos,
+                presupuestos, metas y análisis de tu situación financiera. No compartimos tu información con
+                terceros ni nos conectamos con entidades financieras. Puedes actualizar tus datos desde tu
+                perfil y solicitar su eliminación en cualquier momento.
+              </div>
+            }
           </div>
           <button type="submit" class="btn-primary" [disabled]="loading || !registerForm.form.valid">
             @if (loading) {
@@ -197,6 +217,12 @@ import { RegisterRequest } from '../../../core/models/user.model';
       opacity: 0.5;
       cursor: not-allowed;
     }
+    .hint { display: block; margin-top: 0.35rem; font-size: 0.75rem; color: rgba(255,255,255,0.35); }
+    .consent { margin: 0.25rem 0 1.25rem; }
+    .consent-label { display: flex; gap: 0.6rem; align-items: flex-start; color: rgba(255,255,255,0.6); font-size: 0.85rem; line-height: 1.4; cursor: pointer; }
+    .consent-label input { width: auto; margin-top: 0.2rem; accent-color: #3b82f6; }
+    .consent-label a { color: #60a5fa; text-decoration: underline; }
+    .policy-text { margin-top: 0.6rem; padding: 0.75rem 0.9rem; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: rgba(255,255,255,0.55); font-size: 0.8rem; line-height: 1.5; }
     .auth-divider {
       display: flex;
       align-items: center;
@@ -253,8 +279,14 @@ export class RegisterComponent {
   ArrowRight = ArrowRight;
   Sparkles = Sparkles;
 
-  data: RegisterRequest = { nombre: '', email: '', password: '' };
+  data: RegisterRequest = { nombre: '', email: '', password: '', aceptaPolitica: false };
   loading = false;
+  showPolicy = false;
+
+  togglePolicy(event: Event): void {
+    event.preventDefault();
+    this.showPolicy = !this.showPolicy;
+  }
 
   onSubmit(): void {
     this.loading = true;

@@ -3,11 +3,13 @@ import { TransactionsService } from './transactions.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Transaction, TransactionType } from './entities/transaction.entity';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { CategorizationService } from '../categories/categorization.service';
 
 describe('TransactionsService', () => {
   let service: TransactionsService;
   let repo: jest.Mocked<Partial<Repository<Transaction>>>;
+  let categorization: { resolve: jest.Mock; suggest: jest.Mock };
 
   const mockUserId = 'user-uuid-123';
   const mockTransactionId = 'tx-uuid-001';
@@ -34,10 +36,13 @@ describe('TransactionsService', () => {
       createQueryBuilder: jest.fn(),
     };
 
+    categorization = { resolve: jest.fn(), suggest: jest.fn() };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TransactionsService,
         { provide: getRepositoryToken(Transaction), useValue: repo },
+        { provide: CategorizationService, useValue: categorization },
       ],
     }).compile();
 
@@ -46,6 +51,26 @@ describe('TransactionsService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  describe('create (auto-categorización)', () => {
+    const base = { tipo: TransactionType.EGRESO, monto: 1000, descripcion: 'Uber a casa', fecha: '2026-06-03' };
+
+    it('asigna categoría automática cuando no se envía categoriaId', async () => {
+      categorization.resolve.mockResolvedValue({ id: 'cat-auto' });
+      (repo.create as jest.Mock).mockImplementation((x) => x);
+      (repo.save as jest.Mock).mockImplementation(async (x) => ({ ...x, id: 't1' }));
+      jest.spyOn(service, 'findOne').mockImplementation(async () => ({}) as any);
+      await service.create('u1', base as any);
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ categoriaId: 'cat-auto', origenCategoria: 'automatica' }),
+      );
+    });
+
+    it('lanza BadRequest si no se puede resolver categoría', async () => {
+      categorization.resolve.mockResolvedValue(null);
+      await expect(service.create('u1', base as any)).rejects.toThrow(BadRequestException);
+    });
   });
 
   describe('create', () => {
@@ -66,6 +91,7 @@ describe('TransactionsService', () => {
 
       expect(repo.create).toHaveBeenCalledWith({
         ...createDto,
+        origenCategoria: 'manual',
         userId: mockUserId,
       });
       expect(repo.save).toHaveBeenCalledWith(mockTransaction);

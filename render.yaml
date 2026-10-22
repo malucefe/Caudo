@@ -37,6 +37,16 @@ services:
         value: https://caudo-backend.onrender.com
       - key: CORS_ORIGINS
         value: https://caudo-frontend.onrender.com,http://localhost:4200
+      # Cuentas iniciales: si ya existen con ese correo, solo se asegura el rol y que estén activas
+      - key: ADMIN_EMAIL
+        value: admin@caudo.dev
+      - key: ADMIN_PASSWORD
+        sync: false
+      # IA generativa opcional (Gemini); sin clave se usan solo las reglas
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: AI_CATEGORIZATION
+        value: "false"
 
   - type: web
     name: caudo-frontend

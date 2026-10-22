@@ -9,6 +9,7 @@ export interface Transaction {
   descripcion: string;
   fecha: string;
   archivoUrl: string | null;
+  origenCategoria?: 'manual' | 'automatica';
   createdAt: string;
   category?: Category;
 }
@@ -16,7 +17,8 @@ export interface Transaction {
 export interface CreateTransaction {
   tipo: 'ingreso' | 'egreso';
   monto: number;
-  categoriaId: string;
+  categoriaId?: string;
+  origenCategoria?: 'manual' | 'automatica';
   descripcion?: string;
   fecha: string;
   archivoUrl?: string;

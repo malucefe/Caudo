@@ -2,7 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import { MonitoringService } from '../monitoring/monitoring.service';
 import * as bcrypt from 'bcrypt';
 
 jest.mock('bcrypt');
@@ -11,12 +12,15 @@ describe('AuthService', () => {
   let service: AuthService;
   let usersService: jest.Mocked<Partial<UsersService>>;
   let jwtService: jest.Mocked<Partial<JwtService>>;
+  let monitoring: { audit: jest.Mock };
 
   const mockUser = {
     id: 'user-uuid-123',
     nombre: 'Juan Pérez',
     email: 'juan@email.com',
     passwordHash: 'hashed-password',
+    rol: 'usuario',
+    activo: true,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -28,7 +32,9 @@ describe('AuthService', () => {
       findByEmail: jest.fn(),
       create: jest.fn(),
       findById: jest.fn(),
+      update: jest.fn().mockResolvedValue(null),
     };
+    monitoring = { audit: jest.fn().mockResolvedValue(undefined) };
 
     jwtService = {
       sign: jest.fn().mockReturnValue(mockToken),
@@ -39,6 +45,7 @@ describe('AuthService', () => {
         AuthService,
         { provide: UsersService, useValue: usersService },
         { provide: JwtService, useValue: jwtService },
+        { provide: MonitoringService, useValue: monitoring },
       ],
     }).compile();
 
@@ -54,6 +61,7 @@ describe('AuthService', () => {
       nombre: 'Juan Pérez',
       email: 'juan@email.com',
       password: 'Password1!',
+      aceptaPolitica: true,
     };
 
     it('should create a user, hash password, and return token + user data', async () => {
@@ -69,6 +77,9 @@ describe('AuthService', () => {
         nombre: 'Juan Pérez',
         email: 'juan@email.com',
         passwordHash: 'hashed-password',
+        rol: 'usuario',
+        aceptaPolitica: true,
+        fechaConsentimiento: expect.any(Date),
       });
       expect(jwtService.sign).toHaveBeenCalledWith({
         sub: 'user-uuid-123',
@@ -79,6 +90,7 @@ describe('AuthService', () => {
           id: 'user-uuid-123',
           nombre: 'Juan Pérez',
           email: 'juan@email.com',
+          rol: 'usuario',
         },
         access_token: mockToken,
       });
@@ -123,6 +135,7 @@ describe('AuthService', () => {
           id: 'user-uuid-123',
           nombre: 'Juan Pérez',
           email: 'juan@email.com',
+          rol: 'usuario',
         },
         access_token: mockToken,
       });
@@ -150,6 +163,34 @@ describe('AuthService', () => {
       await expect(service.login(loginDto)).rejects.toThrow(
         'Credenciales inválidas',
       );
+    });
+  });
+
+  describe('login (roles y suspensión)', () => {
+    const loginDto = { email: 'juan@email.com', password: 'Password1!' };
+
+    it('rechaza con 403 una cuenta suspendida y lo audita', async () => {
+      (usersService.findByEmail as jest.Mock).mockResolvedValue({ ...mockUser, activo: false });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      await expect(service.login(loginDto)).rejects.toThrow(ForbiddenException);
+      expect(monitoring.audit).toHaveBeenCalledWith(expect.objectContaining({ accion: 'auth.login_cuenta_suspendida' }));
+      expect(jwtService.sign).not.toHaveBeenCalled();
+    });
+
+    it('audita el login fallido', async () => {
+      (usersService.findByEmail as jest.Mock).mockResolvedValue(mockUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      expect(monitoring.audit).toHaveBeenCalledWith(expect.objectContaining({ accion: 'auth.login_fallido' }));
+    });
+
+    it('devuelve el rol admin, registra último acceso y audita el login del admin', async () => {
+      (usersService.findByEmail as jest.Mock).mockResolvedValue({ ...mockUser, rol: 'admin' });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      const result = await service.login(loginDto);
+      expect(result.user.rol).toBe('admin');
+      expect(usersService.update).toHaveBeenCalledWith('user-uuid-123', { ultimoAcceso: expect.any(Date) });
+      expect(monitoring.audit).toHaveBeenCalledWith(expect.objectContaining({ accion: 'auth.login_admin' }));
     });
   });
 });

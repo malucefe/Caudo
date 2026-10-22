@@ -8,3 +8,6 @@ export * from './interceptors/error.interceptor';
 export * from './models/user.model';
 export * from './models/transaction.model';
 export * from './models/category.model';
+export * from './guards/admin.guard';
+export * from './services/admin.service';
+export * from './models/admin.model';

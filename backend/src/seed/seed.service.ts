@@ -1,4 +1,8 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import * as bcrypt from 'bcrypt';
+import { UsersService } from '../users/users.service';
+import { accountsFromEnv } from './admin-seed';
 import { CategoriesService } from '../categories/categories.service';
 import { CategoryType } from '../categories/entities/category.entity';
 
@@ -6,10 +10,49 @@ import { CategoryType } from '../categories/entities/category.entity';
 export class SeedService implements OnModuleInit {
   private readonly logger = new Logger(SeedService.name);
 
-  constructor(private readonly categoriesService: CategoriesService) {}
+  constructor(
+    private readonly categoriesService: CategoriesService,
+    private readonly usersService: UsersService,
+    private readonly config: ConfigService,
+  ) {}
 
   async onModuleInit() {
     await this.seedCategories();
+    await this.seedAccounts();
+  }
+
+  /**
+   * Crea las cuentas iniciales de ADMIN_* / DEMO_USER_*. Si el correo ya existe
+   * no toca su contraseña; solo asegura el rol y que la cuenta esté activa.
+   */
+  private async seedAccounts() {
+    const env = {
+      ADMIN_EMAIL: this.config.get<string>('ADMIN_EMAIL'),
+      ADMIN_PASSWORD: this.config.get<string>('ADMIN_PASSWORD'),
+      ADMIN_NOMBRE: this.config.get<string>('ADMIN_NOMBRE'),
+      DEMO_USER_EMAIL: this.config.get<string>('DEMO_USER_EMAIL'),
+      DEMO_USER_PASSWORD: this.config.get<string>('DEMO_USER_PASSWORD'),
+      DEMO_USER_NOMBRE: this.config.get<string>('DEMO_USER_NOMBRE'),
+    };
+    for (const acc of accountsFromEnv(env)) {
+      const existing = await this.usersService.findByEmail(acc.email);
+      if (existing) {
+        if (existing.rol !== acc.rol || !existing.activo) {
+          await this.usersService.update(existing.id, { rol: acc.rol, activo: true });
+          this.logger.log(`Cuenta ${acc.email} actualizada (rol ${acc.rol})`);
+        }
+        continue;
+      }
+      await this.usersService.create({
+        nombre: acc.nombre,
+        email: acc.email,
+        passwordHash: await bcrypt.hash(acc.password, 12),
+        rol: acc.rol,
+        activo: true,
+        aceptaPolitica: false,
+      });
+      this.logger.log(`Cuenta ${acc.rol} creada: ${acc.email}`);
+    }
   }
 
   private async seedCategories() {

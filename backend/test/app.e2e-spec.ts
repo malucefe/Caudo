@@ -87,7 +87,28 @@ describe('Auth & Users (e2e)', () => {
       nombre: 'Juan Pérez',
       email: 'juan@email.com',
       password: 'Password1!',
+      aceptaPolitica: true,
     };
+
+    it('should reject registration when the data policy is not accepted (400)', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/auth/register')
+        .send({ ...registerPayload, aceptaPolitica: false })
+        .expect(400);
+
+      expect(JSON.stringify(res.body.message)).toContain(
+        'política de tratamiento de datos',
+      );
+      expect(mockUsersService.create).not.toHaveBeenCalled();
+    });
+
+    it('should reject registration when the data policy field is missing (400)', async () => {
+      const { aceptaPolitica, ...sinPolitica } = registerPayload;
+      await request(app.getHttpServer())
+        .post('/api/auth/register')
+        .send(sinPolitica)
+        .expect(400);
+    });
 
     it('should create user and return 201 with token', async () => {
       mockUsersService.findByEmail.mockResolvedValue(null);
